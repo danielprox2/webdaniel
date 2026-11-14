@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reconocedor de Dígitos por IA</title>
-    <!-- Fuentes de Google -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <!-- Enlace al archivo main.css que ya está en la carpeta static -->
     <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
 </head>
 <body>
@@ -14,13 +12,52 @@
         <h1>🧠 Reconocedor de Dígitos</h1>
         <p>Sube una imagen de un número escrito a mano (0-9) para que la IA lo analice.</p>
         
-        <!-- Formulario configurado exactamente como lo pide el app.py del profesor -->
-        <form action="/predecir" method="POST" enctype="multipart/form-data">
+        <form id="form-ia">
             <div class="upload-box">
-                <input type="file" name="imagen" accept="image/*" required>
+                <input type="file" id="input-imagen" name="imagen" accept="image/*" required>
             </div>
-            <button type="submit">⚡ Analizar Imagen con IA</button>
+            <button type="submit" id="btn-enviar">⚡ Analizar Imagen con IA</button>
         </form>
+
+        <div id="resultado-box" style="margin-top: 20px; display: none; background: rgba(15, 23, 42, 0.9); padding: 15px; border-radius: 10px; border-left: 4px solid #00f5d4;">
+            <h3 style="color: #00f5d4; margin-bottom: 5px;">Resultado:</h3>
+            <p id="texto-resultado" style="font-size: 1.1rem; color: #fff;"></p>
+        </div>
     </div>
+
+    <script>
+        const form = document.getElementById('form-ia');
+        const btn = document.getElementById('btn-enviar');
+        const cajaRes = document.getElementById('resultado-box');
+        const textoRes = document.getElementById('texto-resultado');
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            btn.disabled = true;
+            btn.textContent = 'Analizando...';
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('/predecir', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    textoRes.textContent = 'Error: ' + data.error;
+                } else {
+                    textoRes.textContent = `Número detectado: ${data.numero_predicho} (Confianza: ${data.confianza}%)`;
+                }
+                cajaRes.style.display = 'block';
+            } catch (err) {
+                alert('Error al conectar con el servidor');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⚡ Analizar Imagen con IA';
+            }
+        });
+    </script>
 </body>
 </html>
