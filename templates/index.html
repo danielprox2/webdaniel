@@ -126,7 +126,7 @@
         
         <form id="formulario-ia">
             <div class="upload-box">
-                <input type="file" id="input-imagen" name="imagen" accept="image/*" required>
+                <input type="file" id="input-imagen" accept="image/*" required>
                 <div id="preview-container">
                     <img id="preview" src="" alt="Vista previa">
                 </div>
@@ -147,6 +147,8 @@
         </div>
     </div>
 
+    <canvas id="canvas" style="display:none;"></canvas>
+
     <script>
         const inputImagen = document.getElementById('input-imagen');
         const previewContainer = document.getElementById('preview-container');
@@ -154,27 +156,80 @@
         const formulario = document.getElementById('formulario-ia');
         const btnAnalizar = document.getElementById('btn-analizar');
         const cajaResultado = document.getElementById('caja-resultado');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
-        // Mostrar vista previa al elegir foto
-        inputImagen.addEventListener('change', function() {
-            const archivo = this.files[0];
-            if (archivo) {
-                const lector = new FileReader();
-                lector.onload = function(e) {
-                    preview.src = e.target.result;
+        let imagenProcesadaBlob = null;
+
+        // Procesar imagen automáticamente al seleccionarla para que coincida con MNIST
+        inputImagen.addEventListener('change', function(e) {
+            const archivo = e.target.files[0];
+            if (!archivo) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // Redimensionar a 28x28 para procesamiento exacto
+                    canvas.width = 28;
+                    canvas.height = 28;
+                    ctx.drawImage(img, 0, 0, 28, 28);
+
+                    // Obtener píxeles y convertir a escala de grises / invertir si es fondo claro
+                    const imgData = ctx.getImageData(0, 0, 28, 28);
+                    const data = imgData.data;
+                    
+                    let sumaBrillo = 0;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const promedio = (data[i] + data[i+1] + data[i+2]) / 3;
+                        sumaBrillo += promedio;
+                    }
+                    const brilloGlobal = sumaBrillo / (28 * 28);
+
+                    // Si el fondo es claro (>127), invertimos los colores para que sea fondo negro y trazo blanco (MNIST)
+                    const invertir = brilloGlobal > 127;
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        let gris = (data[i] + data[i+1] + data[i+2]) / 3;
+                        if (invertir) gris = 255 - gris;
+                        
+                        // Aumentar un poco el contraste para limpiar ruido
+                        gris = gris < 50 ? 0 : gris; 
+
+                        data[i] = gris;     // R
+                        data[i+1] = gris; // G
+                        data[i+2] = gris; // B
+                    }
+
+                    ctx.putImageData(imgData, 0, 0);
+
+                    // Mostrar vista previa mejorada
+                    preview.src = canvas.toDataURL('image/png');
                     previewContainer.style.display = 'block';
+
+                    // Convertir canvas a archivo listo para enviar al servidor del profe
+                    canvas.toBlob(function(blob) {
+                        imagenProcesadaBlob = blob;
+                    }, 'image/png');
                 }
-                lector.readAsDataURL(archivo);
+                img.src = event.target.result;
             }
+            reader.readAsDataURL(archivo);
         });
 
-        // Enviar la imagen sin recargar ni salir de la página
+        // Enviar la imagen corregida al servidor
         formulario.addEventListener('submit', async function(e) {
             e.preventDefault();
+            if (!imagenProcesadaBlob) {
+                alert('Por favor selecciona una imagen primero.');
+                return;
+            }
+
             btnAnalizar.disabled = true;
             btnAnalizar.textContent = '⏳ Analizando con IA...';
 
-            const formData = new FormData(formulario);
+            const formData = new FormData();
+            formData.append('imagen', imagenProcesadaBlob, 'digito.png');
 
             try {
                 const respuesta = await fetch('/predecir', {
