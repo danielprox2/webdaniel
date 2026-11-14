@@ -9,32 +9,59 @@
 </head>
 <body>
     <div class="container">
-        <h1>🧠 Reconocedor de Dígitos</h1>
-        <p>Sube una imagen de un número escrito a mano (0-9) para que la IA lo analice.</p>
+        <h1>🧠 Reconocedor IA</h1>
+        <p>Sube una imagen de un dígito escrito a mano (0-9) para que la red neuronal lo clasifique.</p>
         
         <form id="form-ia">
             <div class="upload-box">
                 <input type="file" id="input-imagen" name="imagen" accept="image/*" required>
+                <!-- Miniatura de vista previa profesional -->
+                <div id="preview-container">
+                    <img id="preview" src="" alt="Vista previa del dígito">
+                </div>
             </div>
-            <button type="submit" id="btn-enviar">⚡ Analizar Imagen con IA</button>
+            <button type="submit" id="btn-enviar">⚡ Analizar Dígito con IA</button>
         </form>
 
-        <div id="resultado-box" style="margin-top: 20px; display: none; background: rgba(15, 23, 42, 0.9); padding: 15px; border-radius: 10px; border-left: 4px solid #00f5d4;">
-            <h3 style="color: #00f5d4; margin-bottom: 5px;">Resultado:</h3>
-            <p id="texto-resultado" style="font-size: 1.1rem; color: #fff;"></p>
+        <div id="resultado-box" class="resultado-card">
+            <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Resultado del Modelo</span>
+            <div id="numero-texto" class="numero-grande">-</div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: #cbd5e1;">
+                <span>Nivel de confianza:</span>
+                <strong id="confianza-texto" style="color: var(--primary);">0%</strong>
+            </div>
+            <div class="barra-fondo">
+                <div id="barra-confianza" class="barra-relleno"></div>
+            </div>
         </div>
     </div>
 
     <script>
+        const inputImagen = document.getElementById('input-imagen');
+        const previewContainer = document.getElementById('preview-container');
+        const preview = document.getElementById('preview');
         const form = document.getElementById('form-ia');
         const btn = document.getElementById('btn-enviar');
         const cajaRes = document.getElementById('resultado-box');
-        const textoRes = document.getElementById('texto-resultado');
 
+        // Activar vista previa instantánea con diseño pro
+        inputImagen.addEventListener('change', function(e) {
+            const archivo = e.target.files[0];
+            if (archivo) {
+                const lector = new FileReader();
+                lector.onload = function(event) {
+                    preview.src = event.target.result;
+                    previewContainer.style.display = 'block';
+                }
+                lector.readAsDataURL(archivo);
+            }
+        });
+
+        // Envío por AJAX para mantener la interfaz fluida
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             btn.disabled = true;
-            btn.textContent = 'Analizando...';
+            btn.textContent = '⏳ Analizando matriz...';
 
             const formData = new FormData(form);
 
@@ -46,16 +73,18 @@
                 const data = await response.json();
 
                 if (data.error) {
-                    textoRes.textContent = 'Error: ' + data.error;
+                    alert('Error: ' + data.error);
                 } else {
-                    textoRes.textContent = `Número detectado: ${data.numero_predicho} (Confianza: ${data.confianza}%)`;
+                    document.getElementById('numero-texto').textContent = data.numero_predicho;
+                    document.getElementById('confianza-texto').textContent = data.confianza + '%';
+                    document.getElementById('barra-confianza').style.width = data.confianza + '%';
+                    cajaRes.style.display = 'block';
                 }
-                cajaRes.style.display = 'block';
             } catch (err) {
-                alert('Error al conectar con el servidor');
+                alert('Ocurrió un error al conectar con el servidor.');
             } finally {
                 btn.disabled = false;
-                btn.textContent = '⚡ Analizar Imagen con IA';
+                btn.textContent = '⚡ Analizar Dígito con IA';
             }
         });
     </script>
