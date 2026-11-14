@@ -4,200 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reconocedor de Dígitos por IA</title>
+    <!-- Fuentes de Google -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background: linear-gradient(135deg, #090d16 0%, #111827 50%, #0f172a 100%);
-            font-family: 'Inter', sans-serif;
-            color: #f8fafc;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .container {
-            background: rgba(30, 41, 59, 0.75);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(0, 245, 212, 0.25);
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-            padding: 40px;
-            max-width: 480px;
-            width: 100%;
-            text-align: center;
-        }
-        h1 {
-            background: linear-gradient(90deg, #00f5d4, #00bbf9);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 2rem;
-            font-weight: 800;
-            margin-bottom: 10px;
-        }
-        p {
-            color: #94a3b8;
-            font-size: 0.95rem;
-            margin-bottom: 25px;
-        }
-        .upload-box {
-            background: rgba(15, 23, 42, 0.6);
-            border: 2px dashed rgba(0, 245, 212, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            transition: border-color 0.3s;
-        }
-        .upload-box:hover { border-color: #00f5d4; }
-        input[type="file"] { color: #f8fafc; width: 100%; cursor: pointer; }
-        #preview-container {
-            margin-top: 15px;
-            display: none;
-        }
-        #preview {
-            max-width: 140px;
-            max-height: 140px;
-            border-radius: 10px;
-            border: 2px solid #00f5d4;
-            box-shadow: 0 4px 15px rgba(0, 245, 212, 0.2);
-        }
-        button {
-            background: linear-gradient(90deg, #00f5d4, #00bbf9);
-            color: #090d16;
-            font-weight: 800;
-            border: none;
-            border-radius: 10px;
-            padding: 14px 25px;
-            font-size: 1rem;
-            cursor: pointer;
-            width: 100%;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 245, 212, 0.4);
-        }
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .resultado-card {
-            margin-top: 25px;
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(0, 245, 212, 0.3);
-            border-left: 5px solid #00f5d4;
-            padding: 20px;
-            border-radius: 12px;
-            display: none;
-            animation: fadeIn 0.4s ease;
-        }
-        .numero-grande {
-            font-size: 3.5rem;
-            font-weight: 800;
-            color: #00f5d4;
-            line-height: 1.1;
-            margin: 8px 0;
-        }
-        .barra-fondo {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            height: 10px;
-            width: 100%;
-            margin-top: 10px;
-            overflow: hidden;
-        }
-        .barra-relleno {
-            background: linear-gradient(90deg, #00f5d4, #00bbf9);
-            height: 100%;
-            width: 0%;
-            transition: width 0.6s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+    <!-- Enlace al archivo main.css que ya está en la carpeta static -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
 </head>
 <body>
     <div class="container">
         <h1>🧠 Reconocedor de Dígitos</h1>
         <p>Sube una imagen de un número escrito a mano (0-9) para que la IA lo analice.</p>
         
-        <form id="formulario-ia">
+        <!-- Formulario configurado exactamente como lo pide el app.py del profesor -->
+        <form action="/predecir" method="POST" enctype="multipart/form-data">
             <div class="upload-box">
-                <input type="file" id="input-imagen" name="imagen" accept="image/*" required>
-                <div id="preview-container">
-                    <img id="preview" src="" alt="Vista previa">
-                </div>
+                <input type="file" name="imagen" accept="image/*" required>
             </div>
-            <button type="submit" id="btn-analizar">⚡ Analizar Imagen con IA</button>
+            <button type="submit">⚡ Analizar Imagen con IA</button>
         </form>
-
-        <div id="caja-resultado" class="resultado-card">
-            <span style="color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">Número Detectado</span>
-            <div id="numero-texto" class="numero-grande">-</div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: #cbd5e1;">
-                <span>Nivel de confianza:</span>
-                <strong id="confianza-texto" style="color: #00f5d4;">0%</strong>
-            </div>
-            <div class="barra-fondo">
-                <div id="barra-confianza" class="barra-relleno"></div>
-            </div>
-        </div>
     </div>
-
-    <script>
-        const inputImagen = document.getElementById('input-imagen');
-        const previewContainer = document.getElementById('preview-container');
-        const preview = document.getElementById('preview');
-        const formulario = document.getElementById('formulario-ia');
-        const btnAnalizar = document.getElementById('btn-analizar');
-        const cajaResultado = document.getElementById('caja-resultado');
-
-        // Mostrar vista previa limpia al elegir la foto
-        inputImagen.addEventListener('change', function(e) {
-            const archivo = e.target.files[0];
-            if (archivo) {
-                const lector = new FileReader();
-                lector.onload = function(event) {
-                    preview.src = event.target.result;
-                    previewContainer.style.display = 'block';
-                }
-                lector.readAsDataURL(archivo);
-            }
-        });
-
-        // Enviar la imagen original directamente al servidor del profesor
-        formulario.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            btnAnalizar.disabled = true;
-            btnAnalizar.textContent = '⏳ Analizando con IA...';
-
-            const formData = new FormData(formulario);
-
-            try {
-                const respuesta = await fetch('/predecir', {
-                    method: 'POST',
-                    body: formData
-                });
-                const datos = await respuesta.json();
-
-                if (datos.error) {
-                    alert('Error: ' + datos.error);
-                } else {
-                    document.getElementById('numero-texto').textContent = datos.numero_predicho;
-                    document.getElementById('confianza-texto').textContent = datos.confianza + '%';
-                    document.getElementById('barra-confianza').style.width = datos.confianza + '%';
-                    cajaResultado.style.display = 'block';
-                }
-            } catch (err) {
-                alert('Ocurrió un error al conectar con el servidor.');
-            } finally {
-                btnAnalizar.disabled = false;
-                btnAnalizar.textContent = '⚡ Analizar Imagen con IA';
-            }
-        });
-    </script>
 </body>
 </html>
