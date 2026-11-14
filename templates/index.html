@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reconocedor de Números por IA</title>
+    <title>Reconocedor de Dígitos por IA</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -74,17 +74,23 @@
 </head>
 <body>
     <div class="container">
-        <h1>🧠 Reconocedor de Números</h1>
+        <h1>🧠 Reconocedor de Dígitos</h1>
         <p>Sube una imagen de un número escrito a mano (0-9) para que la IA lo analice.</p>
         
-        <form action="/" method="POST" enctype="multipart/form-data">
+        <!-- Formulario adaptado para Flask -->
+        <form method="POST" enctype="multipart/form-data">
             <div class="upload-box">
                 <input type="file" name="file" required>
             </div>
             <button type="submit">⚡ Analizar Imagen con IA</button>
         </form>
 
-        {% if resultado %}
+        {% if prediction %}
+        <div class="resultado-card">
+            <h3>📊 Resultado:</h3>
+            <p style="color: #00f5d4; font-size: 1.2rem; font-weight: bold; margin-top: 5px;">{{ prediction }}</p>
+        </div>
+        {% elif resultado %}
         <div class="resultado-card">
             <h3>📊 Resultado:</h3>
             <p style="color: #00f5d4; font-size: 1.2rem; font-weight: bold; margin-top: 5px;">{{ resultado }}</p>
