@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from PIL import Image, ImageOps
+from PIL import Image
 from ai_edge_litert.interpreter import Interpreter
 import numpy as np
 import os
@@ -40,35 +40,48 @@ def predecir():
         return jsonify({'error': 'Nombre de archivo vacío'}), 400
 
     try:
-        # Preprocesamiento idéntico al original
+        # Preprocesamiento robusto para evitar sesgos en el modelo
         img = Image.open(archivo.stream).convert('L')
-        img_invertida = ImageOps.invert(img)
-        img_redimensionada = img_invertida.resize((28, 28))
+        
+        # Redimensionar a 28x28 con alta calidad
+        img_redimensionada = img.resize((28, 28), Image.Resampling.LANCZOS)
+        
+        # Convertir a matriz numérica
+        img_array = np.array(img_redimensionada, dtype=np.float32)
+        
+        # Invertir colores automáticamente si el fondo es claro (para que coincida con MNIST)
+        if np.mean(img_array) > 127:
+            img_array = 255.0 - img_array
 
-        img_array = np.array(
-            img_redimensionada,
-            dtype=np.float32
-        ) / 255.0
+        # Adaptar según el tipo de datos que espera el modelo
+        input_dtype = input_details[0]['dtype']
+        if input_dtype == np.float32:
+            img_array = img_array / 255.0
 
         # Agregar dimensión del batch
         img_lista = np.expand_dims(img_array, axis=0)
 
-        # Adaptar dimensiones al modelo
+        # Manejar dimensiones de canales si el modelo los exige
         expected_shape = tuple(input_details[0]['shape'])
+        if len(expected_shape) == 4 and img_lista.ndim == 3:
+            img_lista = np.expand_dims(img_lista, axis=-1)
 
         if tuple(img_lista.shape) != expected_shape:
-            return jsonify({
-                'error': (
-                    f"Dimensiones incompatibles. "
-                    f"Esperadas: {expected_shape}, "
-                    f"recibidas: {img_lista.shape}"
-                )
-            }), 500
+            try:
+                img_lista = np.reshape(img_array, expected_shape)
+            except Exception:
+                return jsonify({
+                    'error': (
+                        f"Dimensiones incompatibles. "
+                        f"Esperadas: {expected_shape}, "
+                        f"recibidas: {img_lista.shape}"
+                    )
+                }), 500
 
         # Ejecutar predicción con LiteRT
         interpreter.set_tensor(
             input_details[0]['index'],
-            img_lista.astype(input_details[0]['dtype'])
+            img_lista.astype(input_dtype)
         )
 
         interpreter.invoke()
@@ -77,7 +90,7 @@ def predecir():
             output_details[0]['index']
         )
 
-        # Obtener resultado
+        # Obtener resultado real
         numero_predicho = int(np.argmax(predicciones[0]))
         confianza = float(np.max(predicciones[0]) * 100)
 
