@@ -3,83 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reconocedor MNIST</title>
+    <title>Reconocedor de Números por IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: linear-gradient(135deg, #090d16 0%, #111827 50%, #0f172a 100%);
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 245, 212, 0.25);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            background: linear-gradient(90deg, #00f5d4, #00bbf9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+        }
+        .upload-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px dashed rgba(0, 245, 212, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        input[type="file"] { color: #f8fafc; margin-bottom: 10px; }
+        button {
+            background: linear-gradient(90deg, #00f5d4, #00bbf9);
+            color: #090d16;
+            font-weight: 800;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: translateY(-2px); }
+        .resultado-card {
+            margin-top: 25px;
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 4px solid #00f5d4;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+        }
+    </style>
 </head>
 <body>
-
-    <h1>Reconocedor de Números (IA)</h1>
-    <p>Sube una imagen de un número escrito a mano (0-9).</p>
-
-    <form id="formulario">
-        <input type="file" id="inputImagen" accept="image/*" required>
+    <div class="container">
+        <h1>🧠 Reconocedor de Números</h1>
+        <p>Sube una imagen de un número escrito a mano (0-9) para que la IA lo analice.</p>
         
-        <div class="preview-caja">
-            <img id="preview" style="display: none;" alt="Previsualización">
-            <span id="textoPreview">Vista previa de la imagen</span>
+        <form action="/" method="POST" enctype="multipart/form-data">
+            <div class="upload-box">
+                <input type="file" name="file" required>
+            </div>
+            <button type="submit">⚡ Analizar Imagen con IA</button>
+        </form>
+
+        {% if resultado %}
+        <div class="resultado-card">
+            <h3>📊 Resultado:</h3>
+            <p style="color: #00f5d4; font-size: 1.2rem; font-weight: bold; margin-top: 5px;">{{ resultado }}</p>
         </div>
-
-        <button type="submit" id="btnEnviar">Analizar Imagen</button>
-    </form>
-
-    <div id="resultado"></div>
-
-    <script>
-        const inputImagen = document.getElementById('inputImagen');
-        const preview = document.getElementById('preview');
-        const textoPreview = document.getElementById('textoPreview');
-        const formulario = document.getElementById('formulario');
-        const btnEnviar = document.getElementById('btnEnviar');
-        const divResultado = document.getElementById('resultado');
-
-        // Mostrar la imagen apenas el usuario la selecciona
-        inputImagen.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                    textoPreview.style.display = 'none';
-                    divResultado.innerHTML = ''; // Limpiar resultados anteriores
-                }
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Enviar la imagen al backend con Fetch
-        formulario.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const file = inputImagen.files[0];
-            if (!file) return;
-
-            btnEnviar.disabled = true;
-            btnEnviar.textContent = 'Procesando...';
-            divResultado.innerHTML = '';
-
-            const formData = new FormData();
-            formData.append('imagen', file);
-
-            try {
-                // Al estar en el mismo servidor, usamos ruta relativa
-                const response = await fetch('/predecir', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    divResultado.innerHTML = `¡Es un ${data.numero_predicho}! <br><small style="color: gray">Confianza: ${data.confianza}%</small>`;
-                } else {
-                    divResultado.innerHTML = `<span style="color: red">Error: ${data.error}</span>`;
-                }
-            } catch (error) {
-                divResultado.innerHTML = `<span style="color: red">Error de conexión con el servidor.</span>`;
-            } finally {
-                btnEnviar.disabled = false;
-                btnEnviar.textContent = 'Analizar Imagen';
-            }
-        });
-    </script>
+        {% endif %}
+    </div>
 </body>
 </html>
