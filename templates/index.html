@@ -77,8 +77,8 @@
         <h1>🧠 Reconocedor de Dígitos</h1>
         <p>Sube una imagen de un número escrito a mano (0-9) para que la IA lo analice.</p>
         
-        <!-- Formulario adaptado para Flask -->
-        <form method="POST" enctype="multipart/form-data">
+        <!-- Usamos action="/" y method="POST" genérico para enganchar con Flask -->
+        <form action="/" method="POST" enctype="multipart/form-data">
             <div class="upload-box">
                 <input type="file" name="file" required>
             </div>
