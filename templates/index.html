@@ -24,7 +24,7 @@
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
             padding: 40px;
-            max-width: 500px;
+            max-width: 480px;
             width: 100%;
             text-align: center;
         }
@@ -47,28 +47,75 @@
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
+            transition: border-color 0.3s;
         }
-        input[type="file"] { color: #f8fafc; margin-bottom: 10px; }
+        .upload-box:hover { border-color: #00f5d4; }
+        input[type="file"] { color: #f8fafc; width: 100%; cursor: pointer; }
+        #preview-container {
+            margin-top: 15px;
+            display: none;
+        }
+        #preview {
+            max-width: 140px;
+            max-height: 140px;
+            border-radius: 10px;
+            border: 2px solid #00f5d4;
+            box-shadow: 0 4px 15px rgba(0, 245, 212, 0.2);
+        }
         button {
             background: linear-gradient(90deg, #00f5d4, #00bbf9);
             color: #090d16;
             font-weight: 800;
             border: none;
             border-radius: 10px;
-            padding: 12px 25px;
+            padding: 14px 25px;
             font-size: 1rem;
             cursor: pointer;
             width: 100%;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        button:hover { transform: translateY(-2px); }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 245, 212, 0.4);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
         .resultado-card {
             margin-top: 25px;
-            background: rgba(15, 23, 42, 0.8);
-            border-left: 4px solid #00f5d4;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: left;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(0, 245, 212, 0.3);
+            border-left: 5px solid #00f5d4;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .numero-grande {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #00f5d4;
+            line-height: 1.1;
+            margin: 8px 0;
+        }
+        .barra-fondo {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            height: 10px;
+            width: 100%;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .barra-relleno {
+            background: linear-gradient(90deg, #00f5d4, #00bbf9);
+            height: 100%;
+            width: 0%;
+            transition: width 0.6s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -77,22 +124,80 @@
         <h1>🧠 Reconocedor de Dígitos</h1>
         <p>Sube una imagen de un número escrito a mano (0-9) para que la IA lo analice.</p>
         
-        <!-- Apunta directo a /predecir y usa name="imagen" como lo exige el app.py del profe -->
-        <form action="/predecir" method="POST" enctype="multipart/form-data">
+        <form id="formulario-ia">
             <div class="upload-box">
-                <input type="file" name="imagen" required>
+                <input type="file" id="input-imagen" name="imagen" accept="image/*" required>
+                <div id="preview-container">
+                    <img id="preview" src="" alt="Vista previa">
+                </div>
             </div>
-            <button type="submit">⚡ Analizar Imagen con IA</button>
+            <button type="submit" id="btn-analizar">⚡ Analizar Imagen con IA</button>
         </form>
 
-        {% if numero_predicho is not none %}
-        <div class="resultado-card">
-            <h3>📊 Resultado del Diagnóstico:</h3>
-            <p style="color: #00f5d4; font-size: 1.2rem; font-weight: bold; margin-top: 5px;">
-                Número detectado: {{ numero_predicho }} (Confianza: {{ confianza }}%)
-            </p>
+        <div id="caja-resultado" class="resultado-card">
+            <span style="color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">Número Detectado</span>
+            <div id="numero-texto" class="numero-grande">-</div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: #cbd5e1;">
+                <span>Nivel de confianza:</span>
+                <strong id="confianza-texto" style="color: #00f5d4;">0%</strong>
+            </div>
+            <div class="barra-fondo">
+                <div id="barra-confianza" class="barra-relleno"></div>
+            </div>
         </div>
-        {% endif %}
     </div>
+
+    <script>
+        const inputImagen = document.getElementById('input-imagen');
+        const previewContainer = document.getElementById('preview-container');
+        const preview = document.getElementById('preview');
+        const formulario = document.getElementById('formulario-ia');
+        const btnAnalizar = document.getElementById('btn-analizar');
+        const cajaResultado = document.getElementById('caja-resultado');
+
+        // Mostrar vista previa al elegir foto
+        inputImagen.addEventListener('change', function() {
+            const archivo = this.files[0];
+            if (archivo) {
+                const lector = new FileReader();
+                lector.onload = function(e) {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                }
+                lector.readAsDataURL(archivo);
+            }
+        });
+
+        // Enviar la imagen sin recargar ni salir de la página
+        formulario.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            btnAnalizar.disabled = true;
+            btnAnalizar.textContent = '⏳ Analizando con IA...';
+
+            const formData = new FormData(formulario);
+
+            try {
+                const respuesta = await fetch('/predecir', {
+                    method: 'POST',
+                    body: formData
+                });
+                const datos = await respuesta.json();
+
+                if (datos.error) {
+                    alert('Error: ' + datos.error);
+                } else {
+                    document.getElementById('numero-texto').textContent = datos.numero_predicho;
+                    document.getElementById('confianza-texto').textContent = datos.confianza + '%';
+                    document.getElementById('barra-confianza').style.width = datos.confianza + '%';
+                    cajaResultado.style.display = 'block';
+                }
+            } catch (err) {
+                alert('Ocurrió un error al conectar con el servidor.');
+            } finally {
+                btnAnalizar.disabled = false;
+                btnAnalizar.textContent = '⚡ Analizar Imagen con IA';
+            }
+        });
+    </script>
 </body>
 </html>
